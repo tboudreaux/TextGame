@@ -7,7 +7,7 @@ Dependencies: WorldController.py, IneractionController.py
 References: N/A
 """
 import random as r
-
+import InteractionController as IC
 import numpy as np
 import pandas as pd
 
@@ -33,7 +33,7 @@ class Player(WorldController.World):
         WorldController.World.__init__(self)
 
         # Location Data
-        start_loc = (0,0)
+        start_loc = (0,0)   # bottom left corner of the world
         self.x = start_loc[0]
         self.y = start_loc[1]
 
@@ -47,35 +47,68 @@ class Player(WorldController.World):
         # Player History / Interaction array
         index = np.linspace(0, self.size[1] - 1, self.size[1])
         columns = np.linspace(0, self.size[0] - 1 , self.size[1])
-        self.PIA = pd.DataFrame(columns=columns, index=index)
+        self.PIA = pd.DataFrame(columns=columns, index=index)   # Player Interaction array (stores player world history)
+
+        # Player Stats
+        self.money = 1*10**9    # Starting money
+        self.HP = 100   # Starting Hit Points
 
         # Initial Message Generator
         self.cont = True
         a = eval(self.WCG[self.x][self.y] + '()')
         a = a.split(',')
         for i in a:
-            checksum = i[:3]
-            return_value = i[3:]
+            checksum = i[:3]    # function meta_data pass
+            params = i[3:].split(':')   # function return data array first element
             if checksum == '/s/':  # auto run a look around at first birth
-                eval('self.' + return_value)
+                eval('self.' + params[0])
             elif checksum == '/d/': # Store data about the first run
-                self.PIA[self.x][self.y] = return_value
+                self.PIA[self.x][self.y] = params[0]
         CAR = (0, 0)        # Coordinated on the world grid at last local function run
 
         # Main Player Control Loop
         while self.cont is True:
-            self.player_action()
-            #os.system('clear')
+            if self.HP <= 0:    # check health and if less than or 0 kill the player
+                self.death()
+            self.player_action()    # preform an action
+            # os.system('clear')     # TODO: Make the clear work
             if self.cont is True:
-                if CAR != (self.x, self.y):     # keep a function from running twice at the same grid point
-                    if self.PIA[self.x][self.y] != 'off':   # check if the function has been deactivated by the world
-                        a = eval(self.WCG[self.x][self.y] + '()')
-                        try:    # Handel if a function does not return a string
-                            if a[:3] == '/s/':  # check if functions want a loacl method run
-                                eval('self.' + a[3:])
-                        except TypeError:   # TODO: Change this to an explicitly handled error
+                # if CAR != (self.x, self.y):     # keep a function from running twice at the same grid point
+                if self.PIA[self.x][self.y] != 'off':   # check if the function has been deactivated by the world
+                    a = eval(self.WCG[self.x][self.y] + '()')
+                    try:    # Handel non value returning functions
+                        a = a.split(',')
+                        for i in a:     # read all of the values and specials returned by the function
+                            checksum = i[:3]
+                            params = i[3:].split(':')
+                            try:    # Handel if a function does not return a string
+                                if checksum == '/s/':  # check if functions want a local method run
+                                    function_call = ''
+                                    if len(params) == 1:    # special case for functions with no parameters imputed
+                                        function_call = params[0] + '()'
+                                    else:      # if the requested function does have parameters to input
+                                        for index, parameter in enumerate(params):      # generate function calls
+                                            if index == 0:      # populate function name and open (
+                                                function_call = parameter + '('
+                                            elif index == len(params) - 1:    # populate final parameter and close )
+                                                function_call += parameter + ')'
+                                            else:   # populare inbetween parameters and commas
+                                                function_call += parameter + ', '
+                                    eval('self.' + function_call)   # evalute generated function sting
+                                elif checksum == '/d/':
+                                    self.PIA[self.x][self.y] = params[0]
+                                elif checksum == '/0/':     # check for player death
+                                    self.death()
+                            except TypeError:   # TODO: Change this to an explicitly handled error
+                                pass
+                    except AttributeError as Ae:
+                        if str(Ae) == "'NoneType' object has no attribute 'split'":     # Expected error
                             pass
-                        CAR = (self.x, self.y)
+                        else:   # Unexpected error
+                            print 'An Unknown Error has occurred | HARD FAIL'
+                            print str(Ae)
+                            exit()
+                    CAR = (self.x, self.y)
 
     def read_input(self, prompt, valid=(None)):
         """
@@ -100,7 +133,29 @@ class Player(WorldController.World):
                 self.cont = False
                 cont = True
             else:
-                print 'Please enter a valid input from list:', all_valid
+                possible_direcitions = []
+                try:
+                    possible_direcitions.append(all_valid.index('north'))
+                except ValueError:
+                    pass
+                try:
+                    possible_direcitions.append(all_valid.index('east'))
+                except ValueError:
+                    pass
+                try:
+                    possible_direcitions.append(all_valid.index('south'))
+                except ValueError:
+                    pass
+                try:
+                    possible_direcitions.append(all_valid.index('west'))
+                except ValueError:
+                    pass
+                for index, direction in enumerate(possible_direcitions):
+                    if index == 0:
+                        possible = all_valid[direction]
+                    else:
+                        possible += ' & ' + all_valid[direction]
+                print 'You cannot do that right now, sorry. You can move ' + possible
         return from_user
 
     def player_action(self):
@@ -196,6 +251,41 @@ class Player(WorldController.World):
         print 'To your east you see:', whats_east
         print 'To your south you see:', whats_south
         print 'To your west you see:', whats_west
+
+    def buy_good(self, good, cost):
+        """
+        buy a good and subtract the cost from your money
+        :param good: good to buy (string)
+        :param cost: cost of the good (float)
+        :return: updates the amount of money that the player has
+        """
+        print 'you have just purchased a ' + str(good) + ' for the reasonable cost of ' + str(cost)
+        self.money -= cost  # subtract the cost from wallet
+        print 'you have ' + str(self.money) + ' left in the bank'
+
+    def hurt(self, damage):
+        """
+        Damage the player based on an amount of damage delt
+        :param damage: amount of damaeg delt (int)
+        :return:
+        """
+        print 'You took ' + str(damage) + ' points of damage'
+        self.HP -= damage   # subtract the damage from HP
+
+    def death(self):
+        """
+        Controls the players death cycle
+        :return: resets values that could have changed for the player in the game to initial states and moves player
+        """
+        print 'GAME OVER | YOU FAILED'
+        self.x = 0
+        self.y = 0
+        self.HP = 100
+        self.money = 1*10**9
+        index = np.linspace(0, self.size[1] - 1, self.size[1])
+        columns = np.linspace(0, self.size[0] - 1 , self.size[1])
+        self.PIA = pd.DataFrame(columns=columns, index=index)
+
 
 def game_init():
     """
