@@ -7,10 +7,12 @@ Dependencies: WorldController.py, IneractionController.py
 References: N/A
 """
 import random as r
-import WorldController
+
 import numpy as np
 import pandas as pd
-import InteractionController as IC
+
+import WorldController
+
 
 # Global Parameters
 

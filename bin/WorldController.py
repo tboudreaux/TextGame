@@ -8,14 +8,14 @@ References: ObjectController.py
 """
 
 # Library Dependencies
-import numpy as np
 import random as r
-import pandas as pd
-import InteractionController as IC
 
+import numpy as np
+import pandas as pd
 
 # ERROR STRINGS
 INTERACTIONERROR = "UNABLE TO LOCATE ALL OR SOME INTERACTION FUNCTION(s) IN INTERACTION FILE \n -- CHECK FILE"
+
 
 # World Data Structure
 class WorldInfo:

@@ -7,7 +7,6 @@ Dependencies: N/A
 References: WorldController.py
 """
 
-
 def I_FUNC_0_0():
     print 'This is the start of your adventure, godspeed'
     return '/s/look_around(),/d/off'
