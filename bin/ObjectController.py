@@ -43,15 +43,22 @@ class Player(WorldController.World):
         self.south = ['s', 'd', 'down', 'south']
         self.west = ['w', 'r', 'right', 'west']
         self.look = ['look around', 'look', 'whats around', 'near me', 'map']
+        self.supplies = ['backpack', 'what Do i have', 'inventory', 'i', 'supplies']
 
         # Player History / Interaction array
         index = np.linspace(0, self.size[1] - 1, self.size[1])
         columns = np.linspace(0, self.size[0] - 1 , self.size[1])
         self.PIA = pd.DataFrame(columns=columns, index=index)   # Player Interaction array (stores player world history)
 
+        # Player meta data
+        self.hold = []      # Store values of temporarily disabled grid point functions
+        self.hold_here = False
+
         # Player Stats
         self.money = 1*10**9    # Starting money
         self.HP = 100   # Starting Hit Points
+        self.inventory = {'A Strange Green thing': 12}     # Starts with an empty inventory
+        self.reputation = 0
 
         # Initial Message Generator
         self.cont = True
@@ -66,15 +73,34 @@ class Player(WorldController.World):
                 self.PIA[self.x][self.y] = params[0]
         CAR = (0, 0)        # Coordinated on the world grid at last local function run
 
+        # Limited Use Lambda Functions
+        c = lambda a, b: b if a is True else 0
+
+        # Variable Initilization
+        holdcoords = 0
+        holdvalue = 0
+
         # Main Player Control Loop
         while self.cont is True:
             if self.HP <= 0:    # check health and if less than or 0 kill the player
                 self.death()
             self.player_action()    # preform an action
             # os.system('clear')     # TODO: Make the clear work
-            if self.cont is True:
+            if self.cont is True:   # Control running function that player lands on
                 # if CAR != (self.x, self.y):     # keep a function from running twice at the same grid point
-                if self.PIA[self.x][self.y] != 'off':   # check if the function has been deactivated by the world
+                indextopop = []
+                for index, holdelement in enumerate(self.hold):
+                    if holdelement[2] > 0:
+                        self.hold[index] = [holdelement[0], holdelement[1], holdelement[2]-1]
+                    elif holdelement[2] <= 0:
+                        indextopop.append(index)
+                for popelement in indextopop:
+                        self.hold.pop(popelement)
+                for i, holdelement in enumerate(self.hold):
+                    if holdelement[0] == self.x and holdelement[1] == self.y:
+                        holdvalue = holdelement[2]
+                        self.hold_here = True
+                if self.PIA[self.x][self.y] != 'off' and c(self.hold_here, holdvalue) == 0:   # check if the function has been deactivated by the world
                     a = eval(self.WCG[self.x][self.y] + '()')
                     try:    # Handel non value returning functions
                         a = a.split(',')
@@ -82,7 +108,7 @@ class Player(WorldController.World):
                             checksum = i[:3]
                             params = i[3:].split(':')
                             try:    # Handel if a function does not return a string
-                                if checksum == '/s/':  # check if functions want a local method run
+                                if checksum == '/s/':  # check if local method magic word
                                     function_call = ''
                                     if len(params) == 1:    # special case for functions with no parameters imputed
                                         function_call = params[0] + '()'
@@ -95,9 +121,11 @@ class Player(WorldController.World):
                                             else:   # populare inbetween parameters and commas
                                                 function_call += parameter + ', '
                                     eval('self.' + function_call)   # evalute generated function sting
-                                elif checksum == '/d/':
+                                elif checksum == '/d/':     # check for data append magic word
                                     self.PIA[self.x][self.y] = params[0]
-                                elif checksum == '/0/':     # check for player death
+                                elif checksum == '/h/':     # check for hold magic word
+                                    self.hold.append([self.x, self.y, int(params[0])])
+                                elif checksum == '/0/':     # check for player death magic word
                                     self.death()
                             except TypeError:   # TODO: Change this to an explicitly handled error
                                 pass
@@ -106,7 +134,6 @@ class Player(WorldController.World):
                             pass
                         else:   # Unexpected error
                             print 'An Unknown Error has occurred | HARD FAIL'
-                            print str(Ae)
                             exit()
                     CAR = (self.x, self.y)
 
@@ -164,7 +191,7 @@ class Player(WorldController.World):
         :return: Updates Player Position on the world grid
         """
         valid_move = [self.north, self.east, self.south, self.west]      # Do not change order of these!
-        valid_action = [self.look]
+        valid_action = [self.look, self.supplies]
         prompt = 'What would you like to do: '     # TODO: Allow prompt to indicate legal actions
 
         # Movement Code
@@ -208,16 +235,22 @@ class Player(WorldController.World):
         # Movement control
         if param in self.north:
             self.y += 1
+            self.hold_here = False
         elif param in self.south:
             self.y -= 1
+            self.hold_here = False
         elif param in self.east:
             self.x += 1
+            self.hold_here = False
         elif param in self.west:
             self.x -= 1
+            self.hold_here = False
 
         # Other Action controls
         elif param in self.look:
             self.look_around()
+        elif param in self.supplies:
+            self.check_inventory()
 
     def look_around(self):
         """
@@ -227,7 +260,11 @@ class Player(WorldController.World):
         print 'You Look to your surroundings and get a sense of your position'
         edge_messages = ['The Edge of the world, it looks inviting',
                          "A fortuitously places large wall, you can't go there"]
+        fog_messages = ['A Storm moving in and obsucuring your view',
+                        'A dense fog which makes it hard to see', 'A large hippopotomus that is staring back at '
+                        'you, you cannot see past']
         rand_message = lambda x: x[r.randint(0, len(x)-1)]
+        m_choose = lambda a, b: a if not 'FUNC' in a else rand_message(b)  # hides defined grid functions
         # Try blocks are an implicit check for the edge of the world    TODO: Try to chancge to explicit checks
         try:
             whats_north = self.WCG[self.x][(self.y+1)][5:]   # grab the function, make it look better, print
@@ -247,10 +284,10 @@ class Player(WorldController.World):
             whats_west = rand_message(edge_messages)
 
         # Consol Output
-        print 'To your north you see:', whats_north
-        print 'To your east you see:', whats_east
-        print 'To your south you see:', whats_south
-        print 'To your west you see:', whats_west
+        print 'To your north you see:', m_choose(whats_north, fog_messages)
+        print 'To your east you see:', m_choose(whats_east, fog_messages)
+        print 'To your south you see:', m_choose(whats_south, fog_messages)
+        print 'To your west you see:', m_choose(whats_west, fog_messages)
 
     def buy_good(self, good, cost):
         """
@@ -261,6 +298,10 @@ class Player(WorldController.World):
         """
         print 'you have just purchased a ' + str(good) + ' for the reasonable cost of ' + str(cost)
         self.money -= cost  # subtract the cost from wallet
+        if good in self.inventory:
+            self.inventory[good] += 1
+        else:
+            self.inventory[good] = 1
         print 'you have ' + str(self.money) + ' left in the bank'
 
     def hurt(self, damage):
@@ -272,6 +313,24 @@ class Player(WorldController.World):
         print 'You took ' + str(damage) + ' points of damage'
         self.HP -= damage   # subtract the damage from HP
 
+    def check_inventory(self):
+        """
+        Check the inventory of the player and print it out
+        :return: Print inventory summery to the display
+        """
+        print 'In Your helpfully large pockets right now you have: '
+        for i in self.inventory.items():
+            print i[0], '-', i[1]
+
+    def mod_standing(self, a):
+        """
+        Adjust the reputation of the player based on a reputation adjustment passed in
+        :param a: the reputation adjustment (int or string castable to int)
+        :return:
+        """
+        print 'Your reputation in the world has gone from: ' + str(self.reputation) + ' to: ' + str(self.reputation-a)
+        self.reputation -= int(a)
+
     def death(self):
         """
         Controls the players death cycle
@@ -282,10 +341,15 @@ class Player(WorldController.World):
         self.y = 0
         self.HP = 100
         self.money = 1*10**9
+        self.hold_here = False
+        self.inventory = {'A Strange Green thing': 12}
+        self.hold = []
         index = np.linspace(0, self.size[1] - 1, self.size[1])
         columns = np.linspace(0, self.size[0] - 1 , self.size[1])
         self.PIA = pd.DataFrame(columns=columns, index=index)
 
+
+        # META COMMAND FUNCTIONS
 
 def game_init():
     """
