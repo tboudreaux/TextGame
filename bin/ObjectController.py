@@ -38,12 +38,14 @@ class Player(WorldController.World):
         self.y = start_loc[1]
 
         # Understood Commands
-        self.north = ['n', 'u', 'up', 'north']
-        self.east = ['e', 'l', 'left', 'east']
-        self.south = ['s', 'd', 'down', 'south']
-        self.west = ['w', 'r', 'right', 'west']
-        self.look = ['look around', 'look', 'whats around', 'near me', 'map']
-        self.supplies = ['backpack', 'what Do i have', 'inventory', 'i', 'supplies']
+        self.north = ['n', 'u', 'up', 'north', 'go north']
+        self.east = ['e', 'l', 'left', 'east', 'go east']
+        self.south = ['s', 'd', 'down', 'south', 'go south']
+        self.west = ['w', 'r', 'right', 'west', 'go west']
+        self.look = ['look around', 'look', 'whats around', 'near me', 'map', 'check around']
+        self.supplies = ['backpack', 'what Do i have', 'inventory', 'i', 'supplies', 'check backpack']
+        self.stats = ['stats', 'health', 'how am i doing', 'hp', 'standing', 'rep', 'reputation', 'status',
+                      'money', 'bank', 'wallet', 'check stats', 'check status']
 
         # Player History / Interaction array
         index = np.linspace(0, self.size[1] - 1, self.size[1])
@@ -53,6 +55,7 @@ class Player(WorldController.World):
         # Player meta data
         self.hold = []      # Store values of temporarily disabled grid point functions
         self.hold_here = False
+
 
         # Player Stats
         self.money = 1*10**9    # Starting money
@@ -77,65 +80,19 @@ class Player(WorldController.World):
         c = lambda a, b: b if a is True else 0
 
         # Variable Initilization
-        holdcoords = 0
-        holdvalue = 0
+        self.holdcoords = 0
+        self.holdvalue = 0
 
         # Main Player Control Loop
         while self.cont is True:
+            if self.turn % 5 == 0:
+                self.check_time()
             if self.HP <= 0:    # check health and if less than or 0 kill the player
                 self.death()
             self.player_action()    # preform an action
             # os.system('clear')     # TODO: Make the clear work
             if self.cont is True:   # Control running function that player lands on
-                # if CAR != (self.x, self.y):     # keep a function from running twice at the same grid point
-                indextopop = []
-                for index, holdelement in enumerate(self.hold):
-                    if holdelement[2] > 0:
-                        self.hold[index] = [holdelement[0], holdelement[1], holdelement[2]-1]
-                    elif holdelement[2] <= 0:
-                        indextopop.append(index)
-                for popelement in indextopop:
-                        self.hold.pop(popelement)
-                for i, holdelement in enumerate(self.hold):
-                    if holdelement[0] == self.x and holdelement[1] == self.y:
-                        holdvalue = holdelement[2]
-                        self.hold_here = True
-                if self.PIA[self.x][self.y] != 'off' and c(self.hold_here, holdvalue) == 0:   # check if the function has been deactivated by the world
-                    a = eval(self.WCG[self.x][self.y] + '()')
-                    try:    # Handel non value returning functions
-                        a = a.split(',')
-                        for i in a:     # read all of the values and specials returned by the function
-                            checksum = i[:3]
-                            params = i[3:].split(':')
-                            try:    # Handel if a function does not return a string
-                                if checksum == '/s/':  # check if local method magic word
-                                    function_call = ''
-                                    if len(params) == 1:    # special case for functions with no parameters imputed
-                                        function_call = params[0] + '()'
-                                    else:      # if the requested function does have parameters to input
-                                        for index, parameter in enumerate(params):      # generate function calls
-                                            if index == 0:      # populate function name and open (
-                                                function_call = parameter + '('
-                                            elif index == len(params) - 1:    # populate final parameter and close )
-                                                function_call += parameter + ')'
-                                            else:   # populare inbetween parameters and commas
-                                                function_call += parameter + ', '
-                                    eval('self.' + function_call)   # evalute generated function sting
-                                elif checksum == '/d/':     # check for data append magic word
-                                    self.PIA[self.x][self.y] = params[0]
-                                elif checksum == '/h/':     # check for hold magic word
-                                    self.hold.append([self.x, self.y, int(params[0])])
-                                elif checksum == '/0/':     # check for player death magic word
-                                    self.death()
-                            except TypeError:   # TODO: Change this to an explicitly handled error
-                                pass
-                    except AttributeError as Ae:
-                        if str(Ae) == "'NoneType' object has no attribute 'split'":     # Expected error
-                            pass
-                        else:   # Unexpected error
-                            print 'An Unknown Error has occurred | HARD FAIL'
-                            exit()
-                    CAR = (self.x, self.y)
+                self.wg_interact()   # Control World Grid interaction
 
     def read_input(self, prompt, valid=(None)):
         """
@@ -191,7 +148,7 @@ class Player(WorldController.World):
         :return: Updates Player Position on the world grid
         """
         valid_move = [self.north, self.east, self.south, self.west]      # Do not change order of these!
-        valid_action = [self.look, self.supplies]
+        valid_action = [self.look, self.supplies, self.stats]
         prompt = 'What would you like to do: '     # TODO: Allow prompt to indicate legal actions
 
         # Movement Code
@@ -234,23 +191,36 @@ class Player(WorldController.World):
 
         # Movement control
         if param in self.north:
+            print 'You walk north'
             self.y += 1
             self.hold_here = False
+            self.turn_update(1)
         elif param in self.south:
+            print 'You walk south'
             self.y -= 1
             self.hold_here = False
+            self.turn_update(1)
         elif param in self.east:
+            print 'You walk east'
             self.x += 1
             self.hold_here = False
+            self.turn_update(1)
         elif param in self.west:
+            print 'You walk west'
             self.x -= 1
             self.hold_here = False
+            self.turn_update(1)
 
         # Other Action controls
         elif param in self.look:
             self.look_around()
+            self.turn_update(1,mod_prev=False)
         elif param in self.supplies:
             self.check_inventory()
+            self.turn_update(1, mod_prev=False)
+        elif param in self.stats:
+            self.check_stats()
+            self.turn_update(1, mod_prev=False)
 
     def look_around(self):
         """
@@ -328,15 +298,34 @@ class Player(WorldController.World):
         :param a: the reputation adjustment (int or string castable to int)
         :return:
         """
-        print 'Your reputation in the world has gone from: ' + str(self.reputation) + ' to: ' + str(self.reputation-a)
-        self.reputation -= int(a)
+        print 'Your reputation in the world has gone from: ' + str(self.reputation) + ' to: ' + str(self.reputation+a)
+        self.reputation += int(a)
+
+    def check_time(self):
+        """
+        Simple turn to time converter with 10 turns being equal to one day
+        :return: N/A
+        """
+        time = self.turn/10.0   # 10 turns per day
+        time = str(time)
+        time = time.split('.')     # split at the decimal
+        day = time[0]
+        tempstr = '0.' + time[1]
+        hour = float(tempstr)*24     # convert decimal to hours
+        print 'It is day ' + str(1 + int(day)) + ' and hour ' + str(hour)
+
+    def check_stats(self):
+        print 'CURRENT STATUS:'
+        print 'HEALTH: ' + str(self.HP) + '%'
+        print 'MONEY: $' + str(self.money)
+        print 'REPUTATION: ' + str(self.reputation) + ' rep points'
 
     def death(self):
         """
         Controls the players death cycle
         :return: resets values that could have changed for the player in the game to initial states and moves player
         """
-        print 'GAME OVER | YOU FAILED'
+        print 'GAME OVER | YOU FAILED | LOOOOOOOSER | Please send help because YOU JUST GOT BURNT'
         self.x = 0
         self.y = 0
         self.HP = 100
@@ -344,12 +333,107 @@ class Player(WorldController.World):
         self.hold_here = False
         self.inventory = {'A Strange Green thing': 12}
         self.hold = []
+        self.reputation = 0
         index = np.linspace(0, self.size[1] - 1, self.size[1])
         columns = np.linspace(0, self.size[0] - 1 , self.size[1])
         self.PIA = pd.DataFrame(columns=columns, index=index)
 
+    # META COMMAND FUNCTIONS
+    def wg_interact(self):
+        """
+        World Grid Interaction Function -- controls how the world grid functions affect and interact with the player
+        :return: N/A
+        """
+        # Lambda Functions:
+        c = lambda a, b: b if a is True else 0
 
-        # META COMMAND FUNCTIONS
+        # Interact Function
+        indextopop = []
+        for index, holdelement in enumerate(self.hold):
+            if holdelement[2] > 0:
+                if self.turn <= 1+self.prev_turn:
+                    self.hold[index] = [holdelement[0], holdelement[1], holdelement[2] - 1]
+            elif holdelement[2] <= 0:
+                indextopop.append(index)
+        for popelement in indextopop:
+            self.hold.pop(popelement)
+        for i, holdelement in enumerate(self.hold):
+            if holdelement[0] == self.x and holdelement[1] == self.y:
+                self.holdvalue = holdelement[2]
+                self.hold_here = True
+        if self.PIA[self.x][self.y] != 'off' and c(self.hold_here,
+                                                   self.holdvalue) == 0:  # check if the function has been deactivated by the world
+            FunctionCall = self.WCG[self.x][self.y] + '()'
+            self.call_interact(FunctionCall)
+
+    def call_interact(self, fcall):
+        """
+        Function to call the world grid functions and interprit their results
+        :param fcall: Fully built function call (string)
+        :return: N/A
+        """
+        a = eval(fcall)     # fun the actual called function
+        try:  # Handel non value returning functions
+            a = a.split(',')    # parse the returned value
+            for i in a:  # read all of the values and specials returned by the function
+                checksum = i[:3]    # Pull out the magic command
+                params = i[3:].split(':')   # Pull out the parameters and split them apart
+                try:  # Handel if a function does not return a string
+                    if checksum == '/s/':  # check if local method magic word
+                        function_call = ''
+                        if len(params) == 1:  # special case for functions with no parameters imputed
+                            function_call = params[0] + '()'
+                        else:  # if the requested function does have parameters to input
+                            for index, parameter in enumerate(params):  # generate function calls
+                                if index == 0:  # populate function name and open (
+                                    function_call = parameter + '('
+                                elif index == len(params) - 1:  # populate final parameter and close )
+                                    function_call += parameter + ')'
+                                else:  # populare inbetween parameters and commas
+                                    function_call += parameter + ', '
+                        eval('self.' + function_call)  # evalute generated function sting
+                    elif checksum == '/d/':  # check for data append magic word
+                        self.PIA[self.x][self.y] = params[0]
+                    elif checksum == '/h/':  # check for hold magic word
+                        self.hold.append([self.x, self.y, int(params[0])])
+                    elif checksum == '/0/':  # check for player death magic word
+                        self.death()
+                    elif checksum == '/a/':    # check for auto action indicator
+                        self.enact_action(params[0])
+                except TypeError:  # TODO: Change this to an explicitly handled error
+                    pass
+        except AttributeError as Ae:
+            if str(Ae) == "'NoneType' object has no attribute 'split'" or str(Ae) == "'int' object has no attribute 'split'":  # Expected error
+                pass
+            else:  # Unexpected error
+                print 'An Unknown Error has occurred | HARD FAIL'
+                print str(Ae)
+                exit()  # Hard fail, close the program
+
+    def req_data(self, param_array):
+        """
+        data passer function from Player - interaction functions
+        :param param_array: array of parameters of type unimportant that the world grid function has requested
+        :return: N/A
+        """
+        send_string = '"'
+        param_array = param_array.split('|')    # parse the request into its individual components
+        for i, e, in enumerate(param_array):
+            if 'PIA' in e:
+                param_array[i] = param_array[i].split('-')  # grap the PIA coords in the split form -
+        for i in param_array:
+            if type(i) == str: # if the requested data is a single thing
+                if i == 'rep':
+                    send_string += str(self.reputation) + ':'   # build a string with the requested data
+            else:   # if the requested data needs parameters to be specified
+                if i[0] == 'PIA':   # Player interaction array check
+                    xcoord = i[1]
+                    ycoord = i[2]
+                    send_string += str(self.PIA[int(xcoord)][int(ycoord)]) + ':'  # Build paremeter string
+        send_string += '/o"' # terminate the string
+        FunctionCall = 'IC.U_FUNC_' + str(self.x) + '_' + str(self.y) + '(' + send_string + ')' # Built function call
+        self.call_interact(FunctionCall)    # call the interaction function
+
 
 def game_init():
     """

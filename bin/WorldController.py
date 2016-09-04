@@ -60,6 +60,8 @@ class World(WorldInfo):
         WorldInfo.__init__(self)
         self.funcpos = 0
         self.gen()
+        self.turn = 0
+        self.prev_turn = 0
 
     def gen(self):
         """
@@ -240,6 +242,16 @@ class World(WorldInfo):
             return func[prob_element]
         else:
             return self.r_area()
+
+    def turn_update(self, amount,mod_prev=True):
+        """
+        Update the turn and prev turn by an amount
+        :param amount: amount to update turn and prev turn by (float)
+        :return:
+        """
+        if mod_prev is True:
+            self.prev_turn = self.turn
+        self.turn += amount
 
 # Initilize the world
 def world_init():
