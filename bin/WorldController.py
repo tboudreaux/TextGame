@@ -22,8 +22,9 @@ class WorldInfo:
     """
     Class to store more General information about the world
     """
-    def __init__(self):
+    def __init__(self, gridSize):
         self.size = (25, 25)    # world size x by y
+        self.grid_size = gridSize
         self.gareas = ["self.river", "self.waterfall", "self.plains", "self.forest"]
         self.bioms = ["grassland", "wooded", "rivervalley", "beach"]
 
@@ -57,7 +58,7 @@ class World(WorldInfo):
     cycle or multi player interactionary objects
     """
     def __init__(self):
-        WorldInfo.__init__(self)
+        WorldInfo.__init__(self, self.grid_size)
         self.funcpos = 0
         self.gen()
         self.turn = 0
@@ -72,7 +73,7 @@ class World(WorldInfo):
         columns = np.linspace(0, self.size[0] - 1 , self.size[1])
         self.WCG = pd.DataFrame(columns=columns, index=index)    # Generate the World Coordiate Grid and inililize it to zero
 
-        """FUNCTION TO READ IN FROM INERACTION"""
+        """FUNCTION TO READ IN FROM INTERACTION"""
         self.read_interact()
 
     def read_interact(self):
@@ -243,17 +244,19 @@ class World(WorldInfo):
         else:
             return self.r_area()
 
-    def turn_update(self, amount,mod_prev=True):
+    def turn_update(self, amount, mod_prev=True):
         """
         Update the turn and prev turn by an amount
         :param amount: amount to update turn and prev turn by (float)
+        :param mod_prev: boolean to modify or not to modify the previous turn
         :return:
         """
         if mod_prev is True:
             self.prev_turn = self.turn
         self.turn += amount
 
-# Initilize the world
+
+# Initialize the world
 def world_init():
     """
     Begin World init
@@ -264,4 +267,4 @@ def world_init():
 
 # Start the program from the command line
 if __name__ == "__main__":
-    world_init()
+    world_init(1)

@@ -10,7 +10,8 @@ import random as r
 import InteractionController as IC
 import numpy as np
 import pandas as pd
-
+from colorama import Fore, Back, Style
+import math
 import WorldController
 
 
@@ -26,7 +27,7 @@ class Player(WorldController.World):
         Current Stats
         Past choices
     """
-    def __init__(self):
+    def __init__(self, velocity):
         """
         Initialize the player
         """
@@ -38,10 +39,10 @@ class Player(WorldController.World):
         self.y = start_loc[1]
 
         # Understood Commands
-        self.north = ['n', 'u', 'up', 'north', 'go north']
-        self.east = ['e', 'l', 'left', 'east', 'go east']
-        self.south = ['s', 'd', 'down', 'south', 'go south']
-        self.west = ['w', 'r', 'right', 'west', 'go west']
+        self.north = ['n', 'u', 'up', 'north', 'go north', 'move north']
+        self.east = ['e', 'l', 'left', 'east', 'go east', 'move east']
+        self.south = ['s', 'd', 'down', 'south', 'go south', 'move south']
+        self.west = ['w', 'r', 'right', 'west', 'go west', 'move west']
         self.look = ['look around', 'look', 'whats around', 'near me', 'map', 'check around']
         self.supplies = ['backpack', 'what Do i have', 'inventory', 'i', 'supplies', 'check backpack']
         self.stats = ['stats', 'health', 'how am i doing', 'hp', 'standing', 'rep', 'reputation', 'status',
@@ -56,12 +57,16 @@ class Player(WorldController.World):
         self.hold = []      # Store values of temporarily disabled grid point functions
         self.hold_here = False
 
-
         # Player Stats
         self.money = 1*10**9    # Starting money
         self.HP = 100   # Starting Hit Points
         self.inventory = {'A Strange Green thing': 12}     # Starts with an empty inventory
         self.reputation = 0
+
+        # Player Physical Parameters
+        self.width = 0.25  # meters
+        self.velocity = velocity
+        self.proper_time = 0    # seconds
 
         # Initial Message Generator
         self.cont = True
@@ -82,17 +87,6 @@ class Player(WorldController.World):
         # Variable Initilization
         self.holdcoords = 0
         self.holdvalue = 0
-
-        # Main Player Control Loop
-        while self.cont is True:
-            if self.turn % 5 == 0:
-                self.check_time()
-            if self.HP <= 0:    # check health and if less than or 0 kill the player
-                self.death()
-            self.player_action()    # preform an action
-            # os.system('clear')     # TODO: Make the clear work
-            if self.cont is True:   # Control running function that player lands on
-                self.wg_interact()   # Control World Grid interaction
 
     def read_input(self, prompt, valid=(None)):
         """
@@ -139,7 +133,7 @@ class Player(WorldController.World):
                         possible = all_valid[direction]
                     else:
                         possible += ' & ' + all_valid[direction]
-                print 'You cannot do that right now, sorry. You can move ' + possible
+                print Fore.RED + 'You cannot do that right now, sorry. You can move ' + possible + Style.RESET_ALL
         return from_user
 
     def player_action(self):
@@ -214,7 +208,7 @@ class Player(WorldController.World):
         # Other Action controls
         elif param in self.look:
             self.look_around()
-            self.turn_update(1,mod_prev=False)
+            self.turn_update(1, mod_prev=False)
         elif param in self.supplies:
             self.check_inventory()
             self.turn_update(1, mod_prev=False)
@@ -315,10 +309,10 @@ class Player(WorldController.World):
         print 'It is day ' + str(1 + int(day)) + ' and hour ' + str(hour)
 
     def check_stats(self):
-        print 'CURRENT STATUS:'
-        print 'HEALTH: ' + str(self.HP) + '%'
-        print 'MONEY: $' + str(self.money)
-        print 'REPUTATION: ' + str(self.reputation) + ' rep points'
+        print Back.WHITE + Fore.BLACK + 'CURRENT STATUS:' + '         ' + Style.RESET_ALL
+        print Back.GREEN + Fore.BLACK +'HEALTH: ' + str(self.HP) + '%' + '            ' + Style.RESET_ALL
+        print Back.GREEN + Fore.BLACK +'MONEY: $' + str(self.money) + '      ' + Style.RESET_ALL
+        print Back.GREEN + Fore.BLACK +'REPUTATION: ' + str(self.reputation) + ' rep points' + Style.RESET_ALL
 
     def death(self):
         """
@@ -434,6 +428,43 @@ class Player(WorldController.World):
         FunctionCall = 'IC.U_FUNC_' + str(self.x) + '_' + str(self.y) + '(' + send_string + ')' # Built function call
         self.call_interact(FunctionCall)    # call the interaction function
 
+    def time_update(self, vel, distance):
+        """
+        Function to update the proper time of the player based on velocity and time passed
+        :param vel: velocity of the player in km/s
+        :param distance: distance the player has moved in km/s
+        :return: Updates the proper time of the player
+        """
+        time_passed_nr = distance/vel   # coordinate time
+        distance *= 3.0*10**-5  # convert distance to SR units
+        vel *= 3.0*10**-5   # convert velocity to SR units
+        if vel >= 0.01:     # if velocity is greater than 1% the speed of light use the proper proper time equation
+            self.proper_time = math.sqrt(1-vel**2)*time_passed_nr
+        else:       # use the binomial approximation
+            self.proper_time = (1-(1/2.0)*vel**2)*time_passed_nr
+
+
+class NPC(WorldController.World):
+
+    def __init__(self, char_type):
+        WorldController.World.__init__(self)
+        self.flag_array = [None, None, None, None]  # Flag arary for NPC (INVALID CHAR, TBD, TBD, TBD)
+        types = ['trader', 'fighter', 'speedy goer', 'breaker', 'One of those supper dull people']
+        if char_type in types:
+            self.type = char_type
+        else:
+            self.type = 'General Citizen'
+            self.flag_array[0] = 'INVALID TYPE'
+        self.HP = 0  # NPC Health
+        self.mood = 5   # NPC mood (5 is neutral, 0 is hostile 10 is happy)
+        index = np.linspace(0, self.size[1] - 1, self.size[1])
+        columns = np.linspace(0, self.size[0] - 1, self.size[1])
+        self.NIA = pd.DataFrame(columns=columns, index=index)  # NPC interaction array (stores NPC interaction history)
+        self.inventory = {'A speedy Quick Quick Maker': 2}     # Starts with an empty inventory
+        self.reputation = 0
+        self.money = 100
+        self.type = types[r.randint(0, len(types)-1)]
+
 
 def game_init():
     """
@@ -441,7 +472,16 @@ def game_init():
     :return: N/A
     """
     WorldController.world_init()       # Initialize the world
-    Player()    # Call player into initilization routine
+    P = Player() # Call player into initialization routine
+    while P.cont is True:     # Player Control Loop
+        if P.turn % 5 == 0:
+            P.check_time()      # Check Player time
+        if P.HP <= 0:    # check health and if less than or 0 kill the player
+            P.death()       # Kill the player
+        P.player_action()    # preform an action
+        # os.system('clear')     # TODO: Make the clear work
+        if P.cont is True:   # Control running function that player lands on
+            P.wg_interact()   # Control World Grid interaction
 
 
 # Start from command line
