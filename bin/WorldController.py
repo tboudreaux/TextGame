@@ -72,6 +72,7 @@ class World(WorldInfo):
         index = np.linspace(0, self.size[1] - 1, self.size[1])
         columns = np.linspace(0, self.size[0] - 1 , self.size[1])
         self.WCG = pd.DataFrame(columns=columns, index=index)    # Generate the World Coordiate Grid and inililize it to zero
+        self.WOG = pd.DataFrame(columns=columns, index=index)    # Generate the World Object Grid and inililize it to zero
 
         """FUNCTION TO READ IN FROM INTERACTION"""
         self.read_interact()

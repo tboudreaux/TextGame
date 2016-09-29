@@ -441,7 +441,7 @@ class Player(WorldController.World):
                     ycoord = i[2]
                     send_string += str(self.PIA[int(xcoord)][int(ycoord)]) + ':'  # Build paremeter string
         send_string += '/o"' # terminate the string
-        FunctionCall = 'IC.U_FUNC_' + str(self.x) + '_' + str(self.y) + '(' + send_string + ')' # Built function call
+        FunctionCall = 'IC.U_FUNC_' + str(self.x) + '_' + str(self.y) + '(' + send_string + ')'  # Build function call
         self.call_interact(FunctionCall)    # call the interaction function
 
     def time_update(self, vel, distance):
@@ -471,6 +471,10 @@ class NPC(WorldController.World):
         :return: Calls NPC into the world
         """
         WorldController.World.__init__(self)
+
+        self.x = r.randint(5, self.size[0])
+        self.y = r.randint(5, self.size[0])
+
         self.flag_array = [None, None, None, None]  # Flag arary for NPC (INVALID CHAR, TBD, TBD, TBD)
         types = ['trader', 'fighter', 'speedy goer', 'breaker', 'One of those supper dull people']
         if char_type in types:
@@ -487,7 +491,9 @@ class NPC(WorldController.World):
         self.reputation = 0
         self.money = 100    # Default money
         self.velocity = 0   # Default Velocity
-        self.assign_attribute()     # Auto assign attributes to
+        self.strength = 5   # NPC strength (5 is neutral, 0 is weak 10 is strong)
+        self.assign_attribute()     # Auto assign attributes to NPC's
+        self.action()
 
     def assign_attribute(self):
         """
@@ -499,12 +505,20 @@ class NPC(WorldController.World):
             self.give_item('Goods', 10)     # TODO fill out trader good st. they are randomized
             self.give_money(900)    # Give the NPC 900 more credits
             self.play_with_emotions(3)
+            self.mod_strength(-3)
         elif self.type == 'fighter':
             self.accelerate(100)    # Accelerate the NPC (fighter) by 100m/s
             self.play_with_emotions(-5)
+            self.mod_standing(4)
         elif self.type == 'speedy goer':
             self.accelerate(2.5*10**8)  # Send the speedy goer to relativistic speeds
             self.give_item('break', 2)
+            self.mod_strength(1)
+        elif self.type == 'breaker':
+            self.mod_strength(5)
+            self.give_item('Boxing Glove', 1)
+            self.give_item('Hammer', 2)
+            self.play_with_emotions(-4)
 
     def give_money(self, amount):
         """
@@ -544,16 +558,57 @@ class NPC(WorldController.World):
         else:
             self.mood += de     # for other cases just increment mood
 
-    def mod_standing(self, ds):
+    def mod_standing(self, dr):
         """
         Change the reputation of the NPC in the game world
         :param ds: Amount to change the reputation by
         :return: Update the reputation
         """
-        if self.reputation + ds < 0:    # Don't let the NPC reputation go below 0
+        if self.reputation + dr < 0:    # Don't let the NPC reputation go below 0
             self.reputation = 0
         else:   # else just incriment it
-            self.reputation += ds
+            self.reputation += dr
+
+    def mod_strength(self, ds):
+        """
+        Modigy the strength of the NPC
+        :param ds: Amount to modify strength by
+        :return: Update to the NPC strength atribute
+        """
+        if self.strength + ds < 0:  # limit min strength
+            self.strength = 0
+        elif self.strength > 10:    # limit max strength
+            self.strength = 10
+        else:                       # else just increment based on parameter
+            self.strength += ds
+
+    def action(self):
+        """
+        NPC General Action
+            If the player is within a 4x4 grid of the NPC the NPC will pathfind towards the player else the NPC will
+            choose a random - legal movment
+            If the NPC lands on another player or another NPC the NPC will preform a general action (id not a movment)
+                The NPC will then automatically move on
+            If the NPC is within a 2x2 grid of another NPC then the NPC will pathfind towrds that NPC and then they
+                will interact
+        :return:
+        """
+        check_grid = self.WOG[self.x-2:self.x+2][self.y-2:self.y+2]
+        if 'player' in check_grid:
+            movement = self.astar()
+            self.move(movement['x'], movement['y'])
+
+    def astar(self):
+        """
+        A* Path finding algorithm to player
+        :return: x amount to move and y amount to move
+        """
+        # TODO fill in a* path finding algorithm
+        return {'x': 1, 'y': 1}
+
+    def move(self, x, y):
+        self.x += x
+        self.y += y
 
 
 def game_init():
