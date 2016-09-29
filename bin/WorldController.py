@@ -22,9 +22,9 @@ class WorldInfo:
     """
     Class to store more General information about the world
     """
-    def __init__(self, gridSize):
+    def __init__(self):
         self.size = (25, 25)    # world size x by y
-        self.grid_size = gridSize
+        self.grid_size = 1
         self.gareas = ["self.river", "self.waterfall", "self.plains", "self.forest"]
         self.bioms = ["grassland", "wooded", "rivervalley", "beach"]
 
@@ -58,7 +58,7 @@ class World(WorldInfo):
     cycle or multi player interactionary objects
     """
     def __init__(self):
-        WorldInfo.__init__(self, self.grid_size)
+        WorldInfo.__init__(self)
         self.funcpos = 0
         self.gen()
         self.turn = 0
@@ -267,4 +267,4 @@ def world_init():
 
 # Start the program from the command line
 if __name__ == "__main__":
-    world_init(1)
+    world_init()

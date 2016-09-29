@@ -38,7 +38,7 @@ class Player(WorldController.World):
         self.x = start_loc[0]
         self.y = start_loc[1]
 
-        # Understood Commands
+        # Understood Commands (vocabulary)
         self.north = ['n', 'u', 'up', 'north', 'go north', 'move north']
         self.east = ['e', 'l', 'left', 'east', 'go east', 'move east']
         self.south = ['s', 'd', 'down', 'south', 'go south', 'move south']
@@ -182,28 +182,28 @@ class Player(WorldController.World):
         :param param: the user input
         :return: N/A
         """
+        def stan_move():        # standard actions that need to be completed on each move
+            self.hold_here = False  # pause the game
+            self.turn_update(1)     # update the world turn counter
+            self.time_update(self.velocity, self.grid_size)     # update the proper time of the player
 
         # Movement control
         if param in self.north:
             print 'You walk north'
             self.y += 1
-            self.hold_here = False
-            self.turn_update(1)
+            stan_move()
         elif param in self.south:
             print 'You walk south'
             self.y -= 1
-            self.hold_here = False
-            self.turn_update(1)
+            stan_move()
         elif param in self.east:
             print 'You walk east'
             self.x += 1
-            self.hold_here = False
-            self.turn_update(1)
+            stan_move()
         elif param in self.west:
             print 'You walk west'
             self.x -= 1
-            self.hold_here = False
-            self.turn_update(1)
+            stan_move()
 
         # Other Action controls
         elif param in self.look:
@@ -300,19 +300,34 @@ class Player(WorldController.World):
         Simple turn to time converter with 10 turns being equal to one day
         :return: N/A
         """
-        time = self.turn/10.0   # 10 turns per day
-        time = str(time)
-        time = time.split('.')     # split at the decimal
-        day = time[0]
-        tempstr = '0.' + time[1]
-        hour = float(tempstr)*24     # convert decimal to hours
-        print 'It is day ' + str(1 + int(day)) + ' and hour ' + str(hour)
+        # print 'TIME: ', self.proper_time
+        m, s = divmod(self.proper_time, 60)
+        # print 'Minute:', m, 'second', s
+        h, m = divmod(m, 60)
+        d, h = divmod(h, 24)
+        w, d = divmod(d, 7)
+        y, w = divmod(w, 52)
+        de, y = divmod(y, 10)
+        c, de = divmod(de, 10)
+        mil, c = divmod(c, 10)
+        print Fore.CYAN + 'It is ' + str(h) + ':' + str(m) + ':' + str(s).split('.')[0] + ' (hh:mm:ss) On day ' + \
+              str(d) + Style.RESET_ALL
+        if w > 1:
+            print 'It is week ' + str(w)
+        if y > 1:
+            print 'It is year ' + str(y)
+        if de > 1:
+            print 'It is decade ' + str(de)
+        if c > 1:
+            print 'It is century ' + str(c)
+        if mil > 1:
+            print 'It is millenium ' + str(mil)
 
     def check_stats(self):
         print Back.WHITE + Fore.BLACK + 'CURRENT STATUS:' + '         ' + Style.RESET_ALL
-        print Back.GREEN + Fore.BLACK +'HEALTH: ' + str(self.HP) + '%' + '            ' + Style.RESET_ALL
-        print Back.GREEN + Fore.BLACK +'MONEY: $' + str(self.money) + '      ' + Style.RESET_ALL
-        print Back.GREEN + Fore.BLACK +'REPUTATION: ' + str(self.reputation) + ' rep points' + Style.RESET_ALL
+        print Back.GREEN + Fore.BLACK + 'HEALTH: ' + str(self.HP) + '%' + '            ' + Style.RESET_ALL
+        print Back.GREEN + Fore.BLACK + 'MONEY: $' + str(self.money) + '      ' + Style.RESET_ALL
+        print Back.GREEN + Fore.BLACK + 'REPUTATION: ' + str(self.reputation) + ' rep points' + Style.RESET_ALL
 
     def death(self):
         """
@@ -431,17 +446,20 @@ class Player(WorldController.World):
     def time_update(self, vel, distance):
         """
         Function to update the proper time of the player based on velocity and time passed
-        :param vel: velocity of the player in km/s
-        :param distance: distance the player has moved in km/s
+        :param vel: velocity of the player in m/s
+        :param distance: distance the player has moved in km
         :return: Updates the proper time of the player
         """
-        time_passed_nr = distance/vel   # coordinate time
         distance *= 3.0*10**-5  # convert distance to SR units
-        vel *= 3.0*10**-5   # convert velocity to SR units
+        print 'vel1: ', vel
+        vel *= 3.0*10**-8   # convert velocity to SR units
+        print 'vel: ', vel
+        time_passed_nr = distance / vel  # coordinate time
         if vel >= 0.01:     # if velocity is greater than 1% the speed of light use the proper proper time equation
-            self.proper_time = math.sqrt(1-vel**2)*time_passed_nr
+            self.proper_time += math.sqrt(1-vel**2)*time_passed_nr
         else:       # use the binomial approximation
-            self.proper_time = (1-(1/2.0)*vel**2)*time_passed_nr
+            self.proper_time += (1-(1/2.0)*vel**2)*time_passed_nr
+            print 'UPDATEING TIME BY: ' + str((1-(1/2.0)*vel**2)*time_passed_nr)
 
 
 class NPC(WorldController.World):
@@ -472,7 +490,7 @@ def game_init():
     :return: N/A
     """
     WorldController.world_init()       # Initialize the world
-    P = Player() # Call player into initialization routine
+    P = Player(2.8*10**8)  # Call player into initialization routine
     while P.cont is True:     # Player Control Loop
         if P.turn % 5 == 0:
             P.check_time()      # Check Player time
