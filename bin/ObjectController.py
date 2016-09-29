@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from colorama import Fore, Back, Style
 import math
+import names
 import WorldController
 
 
@@ -53,6 +54,7 @@ class Player(WorldController.World):
         index = np.linspace(0, self.size[1] - 1, self.size[1])
         columns = np.linspace(0, self.size[0] - 1 , self.size[1])
         self.PIA = pd.DataFrame(columns=columns, index=index)   # Player Interaction array (stores player world history)
+        self.WOG[self.x][self.y] = 'Player'
 
         # Player meta data
         self.hold = []      # Store values of temporarily disabled grid point functions
@@ -88,6 +90,9 @@ class Player(WorldController.World):
         # Variable Initilization
         self.holdcoords = 0
         self.holdvalue = 0
+
+    def coords(self):
+        return [self.x, self.y]
 
     def read_input(self, prompt, valid=(None)):
         """
@@ -472,11 +477,11 @@ class NPC(WorldController.World):
         """
         WorldController.World.__init__(self)
 
-        self.x = r.randint(5, self.size[0])
-        self.y = r.randint(5, self.size[0])
+        self.x = r.randint(2, self.size[0]-1)
+        self.y = r.randint(2, self.size[0]-1)
 
         self.flag_array = [None, None, None, None]  # Flag arary for NPC (INVALID CHAR, TBD, TBD, TBD)
-        types = ['trader', 'fighter', 'speedy goer', 'breaker', 'One of those supper dull people']
+        types = ['Market Capitalists', 'Commies', 'speedy goer', 'Juggernauts', 'One of those supper dull people (Chemists)']
         if char_type in types:
             self.type = char_type
         else:
@@ -493,30 +498,40 @@ class NPC(WorldController.World):
         self.velocity = 0   # Default Velocity
         self.strength = 5   # NPC strength (5 is neutral, 0 is weak 10 is strong)
         self.assign_attribute()     # Auto assign attributes to NPC's
-        self.action()
+        self.gender = ['male', 'female'][r.randint(0, 1)]
+        self.name = names.get_full_name(gender=self.gender)
+        # self.action()
+
+    def __str__(self):
+        return Fore.MAGENTA + 'name: ' + self.name + '\n' + 'type: ' + self.type + '\n'\
+               + 'Velocity: ' + str(self.velocity) + '\n' + 'Mood: ' + str(self.mood) + '\n' \
+               + 'X Pos: ' + str(self.x) + '\n' + 'Y pos: ' + str(self.y) + '\n' + Style.RESET_ALL
+
+    def coords(self):
+        return [self.x, self.y]
 
     def assign_attribute(self):
         """
         Assign starting attributes of different NPC types
         :return: N/A
         """
-        if self.type == 'trader':
+        if self.type == 'Market Capitalists':
             self.accelerate(10)     # Accelerate the NPC (trader) by 10 m/s
             self.give_item('Goods', 10)     # TODO fill out trader good st. they are randomized
             self.give_money(900)    # Give the NPC 900 more credits
             self.play_with_emotions(3)
             self.mod_strength(-3)
-        elif self.type == 'fighter':
+        elif self.type == 'Commies':
             self.accelerate(100)    # Accelerate the NPC (fighter) by 100m/s
             self.play_with_emotions(-5)
-            self.mod_standing(4)
+            self.mod_strength(4)
         elif self.type == 'speedy goer':
             self.accelerate(2.5*10**8)  # Send the speedy goer to relativistic speeds
             self.give_item('break', 2)
             self.mod_strength(1)
-        elif self.type == 'breaker':
+        elif self.type == 'Juggernauts':
             self.mod_strength(5)
-            self.give_item('Boxing Glove', 1)
+            self.give_item('The Jaws of Life', 1)
             self.give_item('Hammer', 2)
             self.play_with_emotions(-4)
 
@@ -582,33 +597,90 @@ class NPC(WorldController.World):
         else:                       # else just increment based on parameter
             self.strength += ds
 
-    def action(self):
+    def action(self, player_object, WOG):
         """
         NPC General Action
             If the player is within a 4x4 grid of the NPC the NPC will pathfind towards the player else the NPC will
             choose a random - legal movment
-            If the NPC lands on another player or another NPC the NPC will preform a general action (id not a movment)
+            If the NPC lands on another player or another NPC the NPC will preform a general action (id not a movement)
                 The NPC will then automatically move on
-            If the NPC is within a 2x2 grid of another NPC then the NPC will pathfind towrds that NPC and then they
-                will interact
-        :return:
+        :param player_object: the player passed int the NPC
+        :param WOG: World object grid
+        :return: N/A
         """
-        check_grid = self.WOG[self.x-2:self.x+2][self.y-2:self.y+2]
-        if 'player' in check_grid:
-            movement = self.astar()
+        player = False
+        player_loc = [0, 0]
+        # print 'WOG is:\n', WOG
+        if WOG[self.x].iloc[self.y] == 'Player':        # If the player is on the grid of an NPC then interact
+            self.player_interact(player_object)
+        else:       # Otherwise Check if the player is within a 4x4 grid, if so path find
+            for i in xrange(-2, 2):
+                for j in xrange(-2, 2):
+                    if i+self.x < 0 or i+self.x > self.size[0]:
+                        add_x = 0
+                    else:
+                        add_x = i
+                    if j + self.y < 0 or j+self.y > self.size[1]:
+                        add_y = 0
+                    else:
+                        add_y = j
+                    if WOG[add_x+self.x].iloc[add_y+self.y] == 'Player':
+                        player = True
+                        player_loc[0] = i+self.x
+                        player_loc[1] = j+self.y
+        if player is True:      # Path find towards player
+            movement = self.path_find(player_loc[0], player_loc[1])
             self.move(movement['x'], movement['y'])
+        else:       # Random movement otherwise
+            self.move(r.randint(-1, 1), r.randint(-1, 1))
 
-    def astar(self):
+    def path_find(self, x_goal, y_goal):
         """
-        A* Path finding algorithm to player
-        :return: x amount to move and y amount to move
+        Path Find to the player or other NPC
+        :param x_goal: location in the x to aim for (int)
+        :param y_goal: Location in the y to aim for (int)
+        :return: x amount to move and y amount to move (moves - dict)
         """
-        # TODO fill in a* path finding algorithm
-        return {'x': 1, 'y': 1}
+        moves = {}
+        move_x = x_goal - self.x
+        move_y = y_goal - self.y
+
+        if move_x > 0:
+            moves['x'] = 1
+        elif move_x < 0:
+            moves['x'] = -1
+        else:
+            moves['x'] = 0
+
+        if move_y > 0:
+            moves['y'] = 1
+        elif move_y < 0:
+            moves['y'] = -1
+        else:
+            moves['y'] = 0
+
+        return moves
 
     def move(self, x, y):
-        self.x += x
-        self.y += y
+        """
+        Move the NPC
+        :param x: x amount to move (int)
+        :param y: y amount to move (int)
+        :return: updates the NPC's position
+        """
+        if 0 < self.x + x < self.size[0]:       # Keep NPC on world grid (x)
+            self.x += x
+        if 0 < self.y + y < self.size[1]:       # Keep NPC on world grid (y)
+            self.y += y
+
+    def player_interact(self, player_object):
+        """
+        Player Interaction function that deals with how the NPC deals with the player
+        :param player_object: Player object to pass into interaction routine
+        :return:
+        """
+        player_object.hurt(100)
+        return None
 
 
 def game_init():
@@ -616,20 +688,35 @@ def game_init():
     Main Game start
     :return: N/A
     """
-    WorldController.world_init()       # Initialize the world
-    P = Player(0.001)  # Call player into initialization routine (default player speed 3 m/s)
-    while P.cont is True:     # Player Control Loop
+    NPC_Count = 25  # Number of NPCs to Spawn into the world
+    NPCs = []
+    char_types = ['Market Capitalists', 'Commies', 'speedy goer', 'Juggernauts',
+                  'One of those supper dull people (Chemists)']
+    W = WorldController.World()      # Initialize the world
+    P = Player(3)  # Call player into initialization routine (default player speed 3 m/s)
+    W.update_world_object('Player', P.coords()[0], P.coords()[1])
+    for i in range(NPC_Count):
+        NPCs.append(NPC(char_types[r.randint(0, len(char_types)-1)]))
+    for j, i in enumerate(NPCs):
+        W.update_world_object('NPC_'+str(j), i.coords()[0], i.coords()[1])
+    W.world_object_to_csv()
+    while P.cont is True:     # Game Loop
         if P.turn % 5 == 0:
             P.check_time()      # Check Player time
         if P.HP <= 0:    # check health and if less than or 0 kill the player
             P.death()       # Kill the player
+        W.update_world_object(np.nan, P.coords()[0], P.coords()[1])
         P.player_action()    # preform an action
+        W.update_world_object('Player', P.coords()[0], P.coords()[1])   # Update the Players Position on the WOG
+        for j, i in enumerate(NPCs):        # calculate NPC moves
+            W.update_world_object("", i.coords()[0], i.coords()[1])      # Reset the old world grid coord
+            i.action(P, W.query_wog())      # Preform Some action
+            W.update_world_object('NPC_'+str(j), i.coords()[0], i.coords()[1])  # Add the NPC back into the WOG
         # os.system('clear')     # TODO: Make the clear work
         if P.cont is True:   # Control running function that player lands on
             P.wg_interact()   # Control World Grid interaction
 
 
 # Start from command line
-if __name__=="__main__":
+if __name__ == "__main__":
     game_init()
-    print 'COMPLETE'

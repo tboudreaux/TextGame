@@ -23,7 +23,7 @@ class WorldInfo:
     Class to store more General information about the world
     """
     def __init__(self):
-        self.size = (25, 25)    # world size x by y
+        self.size = (10, 10)    # world size x by y
         self.grid_size = 1
         self.gareas = ["self.river", "self.waterfall", "self.plains", "self.forest"]
         self.bioms = ["grassland", "wooded", "rivervalley", "beach"]
@@ -250,11 +250,35 @@ class World(WorldInfo):
         Update the turn and prev turn by an amount
         :param amount: amount to update turn and prev turn by (float)
         :param mod_prev: boolean to modify or not to modify the previous turn
-        :return:
+        :return:N/A
         """
         if mod_prev is True:
             self.prev_turn = self.turn
         self.turn += amount
+
+    def update_world_object(self, Object, x, y):
+        """
+        Updates the World Object Grid
+        :param Object: Object to add to the Grid (str)
+        :param x: X coord (int)
+        :param y: y Coord (int)
+        :return:N/A
+        """
+        self.WOG[x][y] = Object
+
+    def world_object_to_csv(self):
+        """
+        Write out the World Object array to a csv
+        :return: N/A
+        """
+        self.WOG.to_csv('TextNPC.csv', sep='\t')
+
+    def query_wog(self):
+        """
+        Query the World object array
+        :return: the World Object grid
+        """
+        return self.WOG
 
 
 # Initialize the world
