@@ -450,16 +450,15 @@ class Player(WorldController.World):
         :param distance: distance the player has moved in km
         :return: Updates the proper time of the player
         """
-        distance *= 3.0*10**-5  # convert distance to SR units
-        print 'vel1: ', vel
-        vel *= 3.0*10**-8   # convert velocity to SR units
-        print 'vel: ', vel
-        time_passed_nr = distance / vel  # coordinate time
+        distance *= 3.0*10**-5  # convert distance (read in in km) to SR units
+        rel_vel = vel/(3.0*10**8)   # convert velocity (read in in m/s) to SR units
+        time_passed_nr = distance / rel_vel  # coordinate time
         if vel >= 0.01:     # if velocity is greater than 1% the speed of light use the proper proper time equation
-            self.proper_time += math.sqrt(1-vel**2)*time_passed_nr
+            self.proper_time += math.sqrt(1-rel_vel**2)*time_passed_nr
+            # print 'UPDATING TIME BY: ' + str(math.sqrt(1-rel_vel**2)*time_passed_nr)
         else:       # use the binomial approximation
-            self.proper_time += (1-(1/2.0)*vel**2)*time_passed_nr
-            print 'UPDATEING TIME BY: ' + str((1-(1/2.0)*vel**2)*time_passed_nr)
+            self.proper_time += (1-(1/2.0)*rel_vel**2)*time_passed_nr
+            # print 'UPDATING TIME BY: ' + str((1-(1/2.0)*rel_vel**2)*time_passed_nr)
 
 
 class NPC(WorldController.World):
@@ -480,8 +479,48 @@ class NPC(WorldController.World):
         self.NIA = pd.DataFrame(columns=columns, index=index)  # NPC interaction array (stores NPC interaction history)
         self.inventory = {'A speedy Quick Quick Maker': 2}     # Starts with an empty inventory
         self.reputation = 0
-        self.money = 100
-        self.type = types[r.randint(0, len(types)-1)]
+        self.money = 100    # Default money
+        self.velocity = 0   # Default Velocity
+        self.assign_attribute()     # Auto assign attributes to
+
+    def assign_attribute(self):
+        """
+        Assign starting attributes of different NPC types
+        :return: N/A
+        """
+        if self.type == 'trader':
+            self.accelerate(10)     # Accelerate the NPC (trader) by 10 m/s
+            self.give_item('Goods', 10)     # TODO fill out trader good st. they are randomized
+            self.give_money(900)    # Give the NPC 900 more credits
+        elif self.type == 'fighter':
+            self.accelerate(100)    # Accelerate the NPC (fighter) by 100m/s
+        elif self.type == 'speedy goer':
+            self.accelerate(2.5*10**8)  # Send the speedy goer to relativistic speeds
+
+    def give_money(self, amount):
+        """
+        Give Money to the NPC
+        :param amount: amount of money to give to the NPC (float/int)
+        :return: Updates the money in the NPC's wallet
+        """
+        self.money += amount
+
+    def accelerate(self, dv):
+        """
+        Change the velocity of the NPC
+        :param dv: Chage in velocity to add (float/int)
+        :return: Update the velocity of the NPC
+        """
+        self.velocity += dv
+
+    def give_item(self, item_name, item_amount):
+        """
+        Add an item and an amount of that item to NPC's inventory
+        :param item_name: Name of the item to add (str)
+        :param item_amount: amount of the item to add (int)
+        :return: Updates the NPC's inventory with the new item and amount
+        """
+        self.inventory[item_name] = item_amount
 
 
 def game_init():
@@ -490,7 +529,7 @@ def game_init():
     :return: N/A
     """
     WorldController.world_init()       # Initialize the world
-    P = Player(2.8*10**8)  # Call player into initialization routine
+    P = Player(3)  # Call player into initialization routine (default player speed 3 m/s)
     while P.cont is True:     # Player Control Loop
         if P.turn % 5 == 0:
             P.check_time()      # Check Player time
