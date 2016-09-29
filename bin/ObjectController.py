@@ -30,6 +30,7 @@ class Player(WorldController.World):
     def __init__(self, velocity):
         """
         Initialize the player
+        :param velocity: initial velocity of the player
         """
         WorldController.World.__init__(self)
 
@@ -313,15 +314,15 @@ class Player(WorldController.World):
         print Fore.CYAN + 'It is ' + str(h) + ':' + str(m) + ':' + str(s).split('.')[0] + ' (hh:mm:ss) On day ' + \
               str(d) + Style.RESET_ALL
         if w > 1:
-            print 'It is week ' + str(w)
+            print Fore.CYAN + 'It is week ' + str(w) + Style.RESET_ALL
         if y > 1:
-            print 'It is year ' + str(y)
+            print Fore.CYAN + 'In year ' + str(y) + Style.RESET_ALL
         if de > 1:
-            print 'It is decade ' + str(de)
+            print Fore.CYAN + 'In decade ' + str(de) + Style.RESET_ALL
         if c > 1:
-            print 'It is century ' + str(c)
+            print Fore.CYAN + 'In century ' + str(c) + Style.RESET_ALL
         if mil > 1:
-            print 'It is millenium ' + str(mil)
+            print Fore.CYAN + 'In millenium ' + str(mil) + Style.RESET_ALL
 
     def check_stats(self):
         print Back.WHITE + Fore.BLACK + 'CURRENT STATUS:' + '         ' + Style.RESET_ALL
@@ -464,6 +465,11 @@ class Player(WorldController.World):
 class NPC(WorldController.World):
 
     def __init__(self, char_type):
+        """
+        Initialize NPC
+        :param char_type: Type of chat chosen from list of types (str)
+        :return: Calls NPC into the world
+        """
         WorldController.World.__init__(self)
         self.flag_array = [None, None, None, None]  # Flag arary for NPC (INVALID CHAR, TBD, TBD, TBD)
         types = ['trader', 'fighter', 'speedy goer', 'breaker', 'One of those supper dull people']
@@ -492,10 +498,13 @@ class NPC(WorldController.World):
             self.accelerate(10)     # Accelerate the NPC (trader) by 10 m/s
             self.give_item('Goods', 10)     # TODO fill out trader good st. they are randomized
             self.give_money(900)    # Give the NPC 900 more credits
+            self.play_with_emotions(3)
         elif self.type == 'fighter':
             self.accelerate(100)    # Accelerate the NPC (fighter) by 100m/s
+            self.play_with_emotions(-5)
         elif self.type == 'speedy goer':
             self.accelerate(2.5*10**8)  # Send the speedy goer to relativistic speeds
+            self.give_item('break', 2)
 
     def give_money(self, amount):
         """
@@ -522,6 +531,30 @@ class NPC(WorldController.World):
         """
         self.inventory[item_name] = item_amount
 
+    def play_with_emotions(self, de):
+        """
+        Modify the mood of the NPC
+        :param de: change in emotional state (int)
+        :return: Updates the NPCs Emotions
+        """
+        if self.mood + de < 0:  # makes sure mood can not go below 0
+            self.mood = 0   # saddest possible
+        elif self.mood + de > 10:   # makes sure mood cannot go above 10
+            self.mood = 10  # Happiest possible
+        else:
+            self.mood += de     # for other cases just increment mood
+
+    def mod_standing(self, ds):
+        """
+        Change the reputation of the NPC in the game world
+        :param ds: Amount to change the reputation by
+        :return: Update the reputation
+        """
+        if self.reputation + ds < 0:    # Don't let the NPC reputation go below 0
+            self.reputation = 0
+        else:   # else just incriment it
+            self.reputation += ds
+
 
 def game_init():
     """
@@ -529,7 +562,7 @@ def game_init():
     :return: N/A
     """
     WorldController.world_init()       # Initialize the world
-    P = Player(3)  # Call player into initialization routine (default player speed 3 m/s)
+    P = Player(0.001)  # Call player into initialization routine (default player speed 3 m/s)
     while P.cont is True:     # Player Control Loop
         if P.turn % 5 == 0:
             P.check_time()      # Check Player time
