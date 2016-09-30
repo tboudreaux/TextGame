@@ -280,6 +280,15 @@ class World(WorldInfo):
         """
         return self.WOG
 
+    def reset_wog(self):
+        """
+        Run the reset parameters on the world
+        :return: Rests WOG
+        """
+        index = np.linspace(0, self.size[1] - 1, self.size[1])
+        columns = np.linspace(0, self.size[0] - 1 , self.size[1])
+        self.WOG = pd.DataFrame(columns=columns, index=index)
+
 
 # Initialize the world
 def world_init():

@@ -14,7 +14,7 @@ from colorama import Fore, Back, Style
 import math
 import names
 import WorldController
-
+import matplotlib.pyplot as plt
 
 # Global Parameters
 
@@ -377,7 +377,7 @@ class Player(WorldController.World):
                 self.holdvalue = holdelement[2]
                 self.hold_here = True
         if self.PIA[self.x][self.y] != 'off' and c(self.hold_here,
-                                                   self.holdvalue) == 0:  # check if the function has been deactivated by the world
+                                                   self.holdvalue) == 0:  # check if the function has been deactivated
             FunctionCall = self.WCG[self.x][self.y] + '()'
             self.call_interact(FunctionCall)
 
@@ -418,7 +418,8 @@ class Player(WorldController.World):
                 except TypeError:  # TODO: Change this to an explicitly handled error
                     pass
         except AttributeError as Ae:
-            if str(Ae) == "'NoneType' object has no attribute 'split'" or str(Ae) == "'int' object has no attribute 'split'":  # Expected error
+            if str(Ae) == "'NoneType' object has no attribute 'split'" or str(Ae) == "'int' object has no attribute " \
+                                                                                     "'split'":  # Expected error
                 pass
             else:  # Unexpected error
                 print 'An Unknown Error has occurred | HARD FAIL'
@@ -481,7 +482,8 @@ class NPC(WorldController.World):
         self.y = r.randint(2, self.size[0]-1)
 
         self.flag_array = [None, None, None, None]  # Flag arary for NPC (INVALID CHAR, TBD, TBD, TBD)
-        types = ['Market Capitalists', 'Commies', 'speedy goer', 'Juggernauts', 'One of those supper dull people (Chemists)']
+        types = ['Market Capitalists', 'Commies', 'speedy goer', 'Juggernauts',
+                 'One of those supper dull people (Chemists)']
         if char_type in types:
             self.type = char_type
         else:
@@ -503,6 +505,10 @@ class NPC(WorldController.World):
         # self.action()
 
     def __str__(self):
+        """
+        Print definction for NPC class
+        :return: the print string
+        """
         return Fore.MAGENTA + 'name: ' + self.name + '\n' + 'type: ' + self.type + '\n'\
                + 'Velocity: ' + str(self.velocity) + '\n' + 'Mood: ' + str(self.mood) + '\n' \
                + 'X Pos: ' + str(self.x) + '\n' + 'Y pos: ' + str(self.y) + '\n' + Style.RESET_ALL
@@ -682,12 +688,30 @@ class NPC(WorldController.World):
         player_object.hurt(100)
         return None
 
+    def query_type(self):
+        """
+        get the type of the NPC
+        :return: the type of the NPC
+        """
+        return self.type
+
+    def query_gender(self):
+        """
+        get the gender of an NPC
+        :return: the gender of the NPC
+        """
+        return self.gender
+
 
 def game_init():
     """
     Main Game start
     :return: N/A
     """
+    count = 0
+    plt.axis([0,10,0,10])
+    plt.ion()
+    plt.show()
     NPC_Count = 25  # Number of NPCs to Spawn into the world
     NPCs = []
     char_types = ['Market Capitalists', 'Commies', 'speedy goer', 'Juggernauts',
@@ -695,28 +719,30 @@ def game_init():
     W = WorldController.World()      # Initialize the world
     P = Player(3)  # Call player into initialization routine (default player speed 3 m/s)
     W.update_world_object('Player', P.coords()[0], P.coords()[1])
-    for i in range(NPC_Count):
-        NPCs.append(NPC(char_types[r.randint(0, len(char_types)-1)]))
-    for j, i in enumerate(NPCs):
-        W.update_world_object('NPC_'+str(j), i.coords()[0], i.coords()[1])
-    W.world_object_to_csv()
+    for i in range(NPC_Count):      # Generate NPCs and place them on the world grid
+        NPCs.append(NPC(char_types[r.randint(0, len(char_types)-1)]))       # Generate NPCs of semi-random class
+        W.update_world_object('NPC_'+str(i), NPCs[i].coords()[0], NPCs[i].coords()[1])  # Place NPCs in world grid
+    W.world_object_to_csv()     # Debug code to see what is happening
     while P.cont is True:     # Game Loop
         if P.turn % 5 == 0:
             P.check_time()      # Check Player time
         if P.HP <= 0:    # check health and if less than or 0 kill the player
+            W.reset_wog()       # Reset the world grid when the player dies
+            NPCs = []     # Kill all the NPCs in the world
+            for i in range(NPC_Count):      # Regenerate the NPCs
+                NPCs.append(NPC(char_types[r.randint(0, len(char_types)-1)]))
+                W.update_world_object('NPC_'+str(i), NPCs[i].coords()[0], NPCs[i].coords()[1])
             P.death()       # Kill the player
         W.update_world_object(np.nan, P.coords()[0], P.coords()[1])
         P.player_action()    # preform an action
-        if type(W.query_wog()[P.coords()[0]][P.coords()[1]]) != float:
-            test = W.query_wog()[P.coords()[0]][P.coords()[1]]
-            print 'THIS IS: ', W.query_wog()[P.coords()[0]][P.coords()[1]]
-            if NPC in W.query_wog()[P.coords()[0]][P.coords()[1]]:
+        if type(W.query_wog()[P.coords()[0]][P.coords()[1]]) != float:  # Only look at non nan elements (non empty)
+            if 'NPC' in W.query_wog()[P.coords()[0]][P.coords()[1]]:
                 W.update_world_object('Player&'+W.query_wog()[P.coords()[0]][P.coords()[1]],
                                       P.coords()[0], P.coords()[1])   # Update the Players Position on the WOG
         else:
             W.update_world_object('Player', P.coords()[0], P.coords()[1])  # Update the Players Position on the WOG
         for j, i in enumerate(NPCs):        # calculate NPC moves
-            if type(W.query_wog()[i.coords()[0]][i.coords()[1]]) != float:
+            if type(W.query_wog()[i.coords()[0]][i.coords()[1]]) != float:   # Only look if there is something (not nan)
                 if 'Player' in W.query_wog()[i.coords()[0]][i.coords()[1]]:
                     W.update_world_object("Player", i.coords()[0], i.coords()[1])      # Reset the old world grid coord
                 else:
@@ -726,9 +752,38 @@ def game_init():
                 if 'Player' in W.query_wog()[i.coords()[0]][i.coords()[1]]:
                     W.update_world_object('Player&NPC_'+str(j), i.coords()[0],
                                           i.coords()[1])  # Add the NPC back into the WOG
+                if 'NPC' in W.query_wog()[i.coords()[0]][i.coords()[1]]:
+                    W.update_world_object(W.query_wog()[i.coords()[0]][i.coords()[1]] + '&NPC_'+str(j), i.coords()[0],
+                                          i.coords()[1])  # Add the NPC back into the WOG
             else:
                 W.update_world_object('NPC_' + str(j), i.coords()[0],i.coords()[1])  # Add the NPC back into the WOG
         W.world_object_to_csv()
+        plt.close()
+        for i in NPCs:
+            if i.query_type() == char_types[0]:
+                s = 'k'
+            elif i.query_type() == char_types[1]:
+                s = 'g'
+            elif i.query_type() == char_types[2]:
+                s = 'b'
+            elif i.query_type() == char_types[3]:
+                s = 'c'
+            elif i.query_type() == char_types[4]:
+                s = 'y'
+
+            if i.query_gender() == 'male':
+                p = 'o'
+            elif i.query_gender() == 'female':
+                p = 'D'
+            plt.plot([i.coords()[0]], [i.coords()[1]], p+s)
+        plt.plot([P.coords()[0]], [P.coords()[1]], 'or')
+        count += 1
+        plt.xlim(xmax=10)
+        plt.xlim(xmin=0)
+        plt.ylim(ymax=10)
+        plt.ylim(ymin=0)
+        plt.draw()
+        plt.pause(0.001)
         # os.system('clear')     # TODO: Make the clear work
         if P.cont is True:   # Control running function that player lands on
             P.wg_interact()   # Control World Grid interaction
