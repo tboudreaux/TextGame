@@ -616,11 +616,11 @@ class NPC(WorldController.World):
         else:       # Otherwise Check if the player is within a 4x4 grid, if so path find
             for i in xrange(-2, 2):
                 for j in xrange(-2, 2):
-                    if i+self.x < 0 or i+self.x > self.size[0]:
+                    if i+self.x < 0 or i+self.x >= self.size[0]:
                         add_x = 0
                     else:
                         add_x = i
-                    if j + self.y < 0 or j+self.y > self.size[1]:
+                    if j + self.y < 0 or j+self.y >= self.size[1]:
                         add_y = 0
                     else:
                         add_y = j
@@ -707,11 +707,28 @@ def game_init():
             P.death()       # Kill the player
         W.update_world_object(np.nan, P.coords()[0], P.coords()[1])
         P.player_action()    # preform an action
-        W.update_world_object('Player', P.coords()[0], P.coords()[1])   # Update the Players Position on the WOG
+        if type(W.query_wog()[P.coords()[0]][P.coords()[1]]) != float:
+            test = W.query_wog()[P.coords()[0]][P.coords()[1]]
+            print 'THIS IS: ', W.query_wog()[P.coords()[0]][P.coords()[1]]
+            if NPC in W.query_wog()[P.coords()[0]][P.coords()[1]]:
+                W.update_world_object('Player&'+W.query_wog()[P.coords()[0]][P.coords()[1]],
+                                      P.coords()[0], P.coords()[1])   # Update the Players Position on the WOG
+        else:
+            W.update_world_object('Player', P.coords()[0], P.coords()[1])  # Update the Players Position on the WOG
         for j, i in enumerate(NPCs):        # calculate NPC moves
-            W.update_world_object("", i.coords()[0], i.coords()[1])      # Reset the old world grid coord
+            if type(W.query_wog()[i.coords()[0]][i.coords()[1]]) != float:
+                if 'Player' in W.query_wog()[i.coords()[0]][i.coords()[1]]:
+                    W.update_world_object("Player", i.coords()[0], i.coords()[1])      # Reset the old world grid coord
+                else:
+                    W.update_world_object("", i.coords()[0], i.coords()[1])
             i.action(P, W.query_wog())      # Preform Some action
-            W.update_world_object('NPC_'+str(j), i.coords()[0], i.coords()[1])  # Add the NPC back into the WOG
+            if type(W.query_wog()[i.coords()[0]][i.coords()[1]]) != float:
+                if 'Player' in W.query_wog()[i.coords()[0]][i.coords()[1]]:
+                    W.update_world_object('Player&NPC_'+str(j), i.coords()[0],
+                                          i.coords()[1])  # Add the NPC back into the WOG
+            else:
+                W.update_world_object('NPC_' + str(j), i.coords()[0],i.coords()[1])  # Add the NPC back into the WOG
+        W.world_object_to_csv()
         # os.system('clear')     # TODO: Make the clear work
         if P.cont is True:   # Control running function that player lands on
             P.wg_interact()   # Control World Grid interaction
