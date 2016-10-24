@@ -6,16 +6,17 @@ Functionality: control objects in the game world
 Dependencies: WorldController.py, IneractionController.py
 References: N/A
 """
+import math
 import random as r
-import InteractionController as IC
-import ItemController as ItC
+
+import names
 import numpy as np
 import pandas as pd
 from colorama import Fore, Back, Style
-import math
-import names
+
 import WorldController
-import matplotlib.pyplot as plt
+from bin import ItemController as ItC
+
 
 # Global Parameters
 
@@ -495,7 +496,7 @@ class Player(WorldController.World):
         distance *= 3.0*10**-5  # convert distance (read in in km) to SR units
         rel_vel = vel/(3.0*10**8)   # convert velocity (read in in m/s) to SR units
         time_passed_nr = distance / rel_vel  # coordinate time
-        if vel >= 0.01:     # if velocity is greater than 1% the speed of light use the proper proper time equation
+        if rel_vel >= 0.01:     # if velocity is greater than 1% the speed of light use the proper proper time equation
             self.proper_time += math.sqrt(1-rel_vel**2)*time_passed_nr
             # print 'UPDATING TIME BY: ' + str(math.sqrt(1-rel_vel**2)*time_passed_nr)
         else:       # use the binomial approximation

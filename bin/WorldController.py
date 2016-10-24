@@ -63,6 +63,7 @@ class World(WorldInfo):
         self.gen()
         self.turn = 0
         self.prev_turn = 0
+        self.clock = 0
 
     def gen(self):
         """
