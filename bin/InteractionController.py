@@ -6,7 +6,7 @@ Functionality: Stores the functions and classes to be run at individual world co
 Dependencies: N/A
 References: WorldController.py
 """
-
+from colorama import Fore, Back, Style
 
 def I_FUNC_0_0():
     print 'This is the start of your adventure, godspeed'
@@ -14,38 +14,25 @@ def I_FUNC_0_0():
 
 
 def I_FUNC_1_0():
-    buy = raw_input('A Merchant Approaches offering you water, What would you like to do[Buy/Decline/Attack/Flee]: ')
-    cont = False
-    while cont is False:
-        if buy[0].upper() == 'Y' or buy[0].upper() == 'B' or buy[0].upper() == 'P' and buy.upper() != 'BYE' and buy.upper() != 'PUNCH' and len(buy) <= 10:
-            cont = True
-            return '/s/buy_good:"water":500,/h/10,/s/mod_standing:2'
-        elif buy[0].upper() == 'N' or buy[0].upper() == 'D' and len(buy) <= 10:
-            print 'The merchant is now sad because he has no money'
-            print 'In a fit of rage the merchant attacks you using a old shoe filled with wasps'
-            cont = True
-            return '/s/hurt:100,/h/10'
-        elif 'RUN' in buy.upper() or 'FLEE' in buy.upper():
-            print 'The merchant manages to hit you over the head with a rock but takes pity becuase he has never sean' \
-                  ' such a slow runner before in his life, I mean really this is a 78 year old merchant from a far off' \
-                  ' land and you are young and from a very near land, the fact that you: a) got spooked enough by a ' \
-                  'merchant to want to run and b) were so slow that he managed to hit you over the head with what was' \
-                  ' a very poorly aimed rock (if we are being brutally honest here, which you know I always am) is ' \
-                  'quite the embaressment in deed.'
-            return '/s/hurt:35,/h/5,/a/north'
-        elif buy[0].upper() == 'A' or buy.upper() == 'PUNCH':
-            print 'You brutally attach the poor old merchant who wanted nothing but to sell some water to feed his ' \
-                  'family, he has a daugter you know, now, because of you her father will no longer be around, yes ' \
-                  'thats correct, in you unprovoked and uncalled for attach on the merchant you also convinced him' \
-                  'to become a hermit, you monster.....'
-            print 'You watch the poor merchant run off to his life of hermitage with a black eye, however as he is ' \
-                  'going he happens into some quicksand and dies. At least it wasnt your fault you think'
-            return '/s/hurt:5,/d/off,/s/mod_standing:-5'
-        else:
-            buy = raw_input('The Merchant does not speak your local tong well yet as he is from a far off land, '
-                            'and he rudely asks you if you could repeat what you said: ')
+    print 'A strange orange thing comes before you blocking the way, you hesitate but eventually decide to try and ' \
+          'to communicate with it via a yodal, it does not work, the orange beast approaches and engulfs you in its ' \
+          'outer membrane. What is this then? You are inside the beast, its dark very dark....you hear a voice...'
+    print Fore.GREEN + Back.RED + 'HELLO TRAVELER, I PRESENT UNTO YOU 12 ITEMS TO CHANGE YOUR MOVEMENT RELATIVE TO ' \
+                                  'THE SENTINAL' + Style.RESET_ALL + '\nAt this point you are quite confused, really ' \
+                                                                     'you only went out for a gallon of milk but okay' \
+                                                                     ' sometimes one just has to, as they say role ' \
+                                                                     'with it...' + Fore.GREEN + Back.RED + 'Stop' \
+          'STOP THINKING TO YOURSELF IT IS QUITE DISTRACTING, REGARDLESS USE THESSE TO SELECT A VELOCITY, NOW GOOOOO'
+    print Style.RESET_ALL
+    print "The orange entity flys away in a flury of furbies, do not be fooed however the furbies are not the object" \
+          "mearly an eccentricity of this orange glob, he like them don't judge, anyways he leaves behind 12 round" \
+          "spheres and an oval one, the round spheres glow, the oval one was a figment of your imagination"
+    pick_up = ('Would you like to pick up the objects: ')
 
+    print 'As you ' + pick_up + 'the objetcs violently fly into your bag, apparently you had no choice in the matter ' \
+          'to begin with'
 
+    return '/s/give_item:"Acceleration Engine":12,/d/off'
 def I_FUNC_2_0():
     return '/s/req_data:"rep|PIA-1-0|PIA-2-0"'
 def U_FUNC_2_0(parameter_array):
